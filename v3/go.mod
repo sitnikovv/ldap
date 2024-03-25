@@ -2,7 +2,7 @@ module github.com/go-ldap/ldap/v3
 
 go 1.14
 
-replace github.com/jcmturner/gokrb5/v8 v8.4.4 => github.com/sitnikovv/gokrb5/v8 v8.4.5-0.20240306063448-03360d80ce8a
+replace github.com/jcmturner/gokrb5/v8 v8.4.4 => github.com/sitnikovv/gokrb5/v8 v8.4.5-0.20240326130305-8845063d7c70
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358

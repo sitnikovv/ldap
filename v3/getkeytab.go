@@ -113,15 +113,15 @@ func ParseGetKeytabResponse(packet *ber.Packet) (uint32, map[string][]types.Encr
 			continue
 		}
 
-		// Проверяем обратный SPN/UPN
-		revertXpn, ok := rawUpn.Value.(string)
+		// Проверяем соль
+		salt, ok := rawUpn.Value.(string)
 		if !ok {
 			continue
 		}
-		if _, ok = enctypeList[revertXpn]; !ok {
-			enctypeList[revertXpn] = nil
+		if _, ok = enctypeList[salt]; !ok {
+			enctypeList[salt] = nil
 		}
-		enctypeList[revertXpn] = append(enctypeList[revertXpn], types.EncryptionKey{
+		enctypeList[salt] = append(enctypeList[salt], types.EncryptionKey{
 			KeyType:  int32(encId),
 			KeyValue: []byte(encValue),
 		})
@@ -152,7 +152,7 @@ func (s *SetKeytabRequest) String() string {
 func (s *SetKeytabRequest) Encode() *ber.Packet {
 	// Получаем имя принципала
 	principal := s.Principal + "@" + s.Realm
-	principalCompact := s.Realm + s.Principal
+	salt := s.Realm + s.Principal
 	ETypesByName := swapMap(etypeID.ETypesByName)
 
 	req := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Set Keytab Request")
@@ -177,7 +177,7 @@ func (s *SetKeytabRequest) Encode() *ber.Packet {
 		markerId := ber.Encode(ber.ClassContext, ber.TypeConstructed, 1, nil, "Marker Type")
 		markerId.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, 0, "Principal Marker"))
 		markerData := ber.Encode(ber.ClassContext, ber.TypeConstructed, 1, nil, "Marker value")
-		markerData.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, principalCompact, "Marker: "+principalCompact))
+		markerData.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, salt, "Marker: "+salt))
 		marker := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Encryption Marker Sequence")
 		marker.AppendChild(markerId)
 		marker.AppendChild(markerData)
@@ -314,7 +314,7 @@ func (k *Keytab) GetKeytab(receiveOnly bool) (*keytab.Keytab, error) {
 		return nil, errors.New("realm not set")
 	}
 
-	principalCompact := k.realm + k.principal.PrincipalNameString()
+	salt := k.realm + k.principal.PrincipalNameString()
 
 	// Формируем запрос на получение keytab
 	req := k.NewExtendedRequest(GetKeytabOID, []Control{&GetKeytabRequest{
@@ -337,7 +337,7 @@ func (k *Keytab) GetKeytab(receiveOnly bool) (*keytab.Keytab, error) {
 
 		// Фильтруем ключи шифрования, оставляя только поддерживаемые
 		ETypesById := swapMap(etypeID.ETypesByName)
-		for _, key := range responseEncList[principalCompact] {
+		for _, key := range responseEncList[salt] {
 			if _, ok := ETypesById[key.KeyType]; ok {
 				encList = append(encList, key)
 			}
