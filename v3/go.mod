@@ -2,7 +2,7 @@ module github.com/go-ldap/ldap/v3
 
 go 1.21.3
 
-replace github.com/jcmturner/gokrb5/v8 v8.4.4 => github.com/sitnikovv/gokrb5/v8 v8.4.5-secman.1.0.1
+replace github.com/jcmturner/gokrb5/v8 v8.4.4 => github.com/sitnikovv/gokrb5/v8 v8.4.5-secman.1.0.2
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358
@@ -29,5 +29,5 @@ require (
 	golang.org/x/net v0.24.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	stash.delta.sbrf.ru/secman/vault-plugin-helpers/dnsutils v1.0.0 // indirect
-	stash.delta.sbrf.ru/secman/vault-plugin-helpers/network v1.0.2 // indirect
+	stash.delta.sbrf.ru/secman/vault-plugin-helpers/network v1.0.3 // indirect
 )
