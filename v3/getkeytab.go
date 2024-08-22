@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
@@ -8,6 +9,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/types"
+	"math/big"
 	"strconv"
 	"time"
 )
@@ -314,6 +316,16 @@ func (k *Keytab) GetKeytab(receiveOnly bool) (*keytab.Keytab, error) {
 		return nil, errors.New("realm not set")
 	}
 
+	// Генерируем случайный пароль, если он не был указан явно
+	if k.password == "" {
+		if pass, err := GenerateRandomString(20); err == nil {
+			k.password = pass
+			defer func() {
+				k.password = ""
+			}()
+		}
+	}
+
 	salt := k.realm + k.principal.PrincipalNameString()
 
 	// Формируем запрос на получение keytab
@@ -483,4 +495,19 @@ func cloneSliceControl(in []Control) []Control {
 	result := make([]Control, len(in))
 	copy(result, in)
 	return result
+}
+
+// GenerateRandomString генерирует случайную строку указанного размера
+func GenerateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-%.#*!~"
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		ret = append(ret, letters[num.Int64()])
+	}
+
+	return string(ret), nil
 }
