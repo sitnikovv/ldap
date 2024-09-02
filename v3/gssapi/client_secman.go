@@ -1,10 +1,10 @@
 package gssapi
 
 import (
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/credentials"
-	"github.com/jcmturner/gokrb5/v8/keytab"
+	"github.com/sitnikovv/gokrb5/v8/client"
+	"github.com/sitnikovv/gokrb5/v8/config"
+	"github.com/sitnikovv/gokrb5/v8/credentials"
+	"github.com/sitnikovv/gokrb5/v8/keytab"
 )
 
 // NewClientWithKeytabNoPath creates a new client from a keytab credential without keytab and config paths.

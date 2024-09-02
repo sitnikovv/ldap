@@ -3,19 +3,19 @@ package gssapi
 import (
 	"fmt"
 
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/keytab"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/sitnikovv/gokrb5/v8/client"
+	"github.com/sitnikovv/gokrb5/v8/config"
+	"github.com/sitnikovv/gokrb5/v8/keytab"
+	"github.com/sitnikovv/gokrb5/v8/types"
 
-	"github.com/jcmturner/gokrb5/v8/gssapi"
-	"github.com/jcmturner/gokrb5/v8/spnego"
+	"github.com/sitnikovv/gokrb5/v8/gssapi"
+	"github.com/sitnikovv/gokrb5/v8/spnego"
 
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana/keyusage"
-	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/sitnikovv/gokrb5/v8/crypto"
+	"github.com/sitnikovv/gokrb5/v8/iana/keyusage"
+	"github.com/sitnikovv/gokrb5/v8/messages"
 
-	"github.com/jcmturner/gokrb5/v8/credentials"
+	"github.com/sitnikovv/gokrb5/v8/credentials"
 )
 
 // Client implements ldap.GSSAPIClient interface.
