@@ -303,9 +303,8 @@ func (k *Keytab) NewExtendedRequest(operationOID string, controls []Control) *Ex
 
 func (k *Keytab) GetKeytab(receiveOnly bool) (*keytab.Keytab, error) {
 	var (
-		kvno           uint32
-		encList        []types.EncryptionKey
-		encryptionKeys map[int]types.EncryptionKey
+		kvno    uint32
+		encList []types.EncryptionKey
 	)
 
 	// Проверяем ошибки
@@ -359,49 +358,94 @@ func (k *Keytab) GetKeytab(receiveOnly bool) (*keytab.Keytab, error) {
 
 	// Если получить keytab не удалось и можно обновлять keytab, будем делать запрос на смену keytab, получение нового kvno и поддерживаемых типов шифрования.
 	if (kvno == 0 || len(encList) == 0) && !receiveOnly {
-
-		// Собираем информацию о требуемых типах шифрования, по-умолчанию будем использовать все поддерживаемые типы шифрования сразу
-		encryptionTypes := cloneSliceString(k.encryptionTypes)
-		if len(encryptionTypes) == 0 {
-			for typeName := range etypeID.ETypesByName {
-				encryptionTypes = append(encryptionTypes, typeName)
-			}
-		}
-
-		// Формируем список поддерживаемых ключей шифрования
-		encryptionKeys = map[int]types.EncryptionKey{}
-		for _, encryptionType := range encryptionTypes {
-			if etypeID.EtypeSupported(encryptionType) != 0 {
-				if key, _, err := crypto.GetKeyFromPassword(k.password, k.principal, k.realm, etypeID.ETypesByName[encryptionType], types.PADataSequence{}); err == nil {
-					encryptionKeys[int(key.KeyType)] = key
-				}
-			}
-		}
-
-		// Формируем запрос на смену keytab
-		setKeytabCtrl := &SetKeytabRequest{
-			Principal:      k.principal.PrincipalNameString(),
-			Realm:          k.realm,
-			EncryptionKeys: encryptionKeys,
-		}
-
-		// Выполняем запрос, выходим в случае ошибки
-		req = k.NewExtendedRequest(SetKeytabOID, []Control{setKeytabCtrl})
-		op, err = k.conn.Extended(req)
-		if err != nil {
-			return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("invalid response: %w", err))
-		}
-
-		// Производим парсинг ответа
-		responseKvno, responseKeys, err := ParseSetKeytabResponse(op)
-		if err != nil {
-			return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("invalid response: %w", err))
-		}
-		for _, key := range responseKeys {
-			encList = append(encList, encryptionKeys[key])
-		}
-		kvno = responseKvno
+		return k.SetKeytab()
 	}
+
+	if len(encList) == 0 {
+		return nil, NewError(ErrorUnexpectedResponse, errors.New("no supported encode types"))
+	}
+
+	if kvno == 0 {
+		return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("invalid kvno: %w", err))
+	}
+
+	// Генерируем keytab
+	kt := keytab.New()
+	if err = kt.AddEntriesByKeyList(k.principal.PrincipalNameString(), k.realm, time.Now(), kvno, encList); err != nil {
+		return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("fail create keytab: %w", err))
+	}
+
+	return kt, nil
+}
+
+func (k *Keytab) SetKeytab() (*keytab.Keytab, error) {
+	var (
+		kvno           uint32
+		encList        []types.EncryptionKey
+		encryptionKeys map[int]types.EncryptionKey
+	)
+
+	// Проверяем ошибки
+	if len(k.principal.NameString) == 0 {
+		return nil, errors.New("principal not set")
+	}
+	if k.realm == "" {
+		return nil, errors.New("realm not set")
+	}
+
+	// Генерируем случайный пароль, если он не был указан явно
+	if k.password == "" {
+		if pass, err := GenerateRandomString(20); err == nil {
+			k.password = pass
+			defer func() {
+				k.password = ""
+			}()
+		}
+	}
+
+	// Собираем информацию о требуемых типах шифрования, по-умолчанию будем использовать все поддерживаемые типы шифрования сразу
+	encryptionTypes := cloneSliceString(k.encryptionTypes)
+	if len(encryptionTypes) == 0 {
+		for typeName := range etypeID.ETypesByName {
+			encryptionTypes = append(encryptionTypes, typeName)
+		}
+	}
+
+	// Формируем список поддерживаемых ключей шифрования
+	encryptionKeys = map[int]types.EncryptionKey{}
+	for _, encryptionType := range encryptionTypes {
+		if etypeID.EtypeSupported(encryptionType) != 0 {
+			if key, _, err := crypto.GetKeyFromPassword(k.password, k.principal, k.realm, etypeID.ETypesByName[encryptionType], types.PADataSequence{}); err == nil {
+				encryptionKeys[int(key.KeyType)] = key
+			}
+		}
+	}
+
+	// Формируем запрос на смену keytab
+	setKeytabCtrl := &SetKeytabRequest{
+		Principal:      k.principal.PrincipalNameString(),
+		Realm:          k.realm,
+		EncryptionKeys: encryptionKeys,
+	}
+
+	// Выполняем запрос, выходим в случае ошибки
+	req := k.NewExtendedRequest(SetKeytabOID, []Control{setKeytabCtrl})
+	op, err := k.conn.Extended(req)
+	if err != nil {
+		return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("invalid response: %w", err))
+	}
+
+	// Производим парсинг ответа
+	responseKvno, responseKeys, err := ParseSetKeytabResponse(op)
+	if err != nil {
+		return nil, NewError(ErrorUnexpectedResponse, fmt.Errorf("invalid response: %w", err))
+	}
+
+	for _, key := range responseKeys {
+		encList = append(encList, encryptionKeys[key])
+	}
+
+	kvno = responseKvno
 
 	if len(encList) == 0 {
 		return nil, NewError(ErrorUnexpectedResponse, errors.New("no supported encode types"))
